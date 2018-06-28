@@ -6,7 +6,6 @@ import (
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/gorilla/mux"
 	"strings"
-	"fmt"
 )
 
 func init() {
@@ -18,8 +17,6 @@ func init() {
 
 func setup(c *caddy.Controller) error {
 	cfg := httpserver.GetConfig(c)
-	fmt.Println("Host:"+cfg.Addr.Host, "Original:"+cfg.Addr.Original,
-		"Path:"+cfg.Addr.Path, "Port:"+cfg.Addr.Port, "ListenHost:"+cfg.ListenHost)
 	router, err := routeParse(c)
 	if err != nil {
 		return err
@@ -64,8 +61,13 @@ func routeParse(c *caddy.Controller) (*mux.Router, error) {
 		}
 
 		if handle, ok := registerController[action]; ok {
-			methods := strings.Split(strings.Replace(method, " ", "", -1), ",")
-			r.HandleFunc(path, handle).Name(path).Methods(methods...)
+			if len(method) > 0 {
+				methods := strings.Split(strings.Replace(method, " ", "", -1), ",")
+				r.HandleFunc(path, handle).Name(path).Methods(methods...)
+			} else {
+				r.HandleFunc(path, handle).Name(path)
+			}
+
 		}
 	}
 	return r, nil
