@@ -7,7 +7,10 @@ import (
 	"compress/gzip"
 	"io/ioutil"
 	"encoding/json"
-	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/devfeel/mapper"
+	"github.com/zhangmingfeng/minres/plugins/redis"
+	"time"
 )
 
 var (
@@ -20,14 +23,29 @@ type ControllerBase struct {
 	request *http.Request
 }
 
-func (c *ControllerBase) ParseForm(r *http.Request) {
+func (c *ControllerBase) ParseForm(r *http.Request, request interface{}) {
 	c.request = r
+	paramsMap := make(map[string]interface{}, 0)
+	vars := mux.Vars(r)
+	for k, v := range vars {
+		paramsMap[k] = v
+	}
 	if c.RequestJSON() {
-		bodyMap := make(map[string]string, 0)
+		bodyMap := make(map[string]interface{}, 0)
 		body := c.RequestBody()
 		err := json.Unmarshal(body, &bodyMap)
-		fmt.Println(bodyMap, err)
+		if err != nil {
+			panic(err)
+		}
+		for k, v := range bodyMap {
+			paramsMap[k] = v
+		}
 	}
+	r.ParseForm()
+	for k, _ := range r.Form {
+		paramsMap[k] = r.FormValue(k)
+	}
+	mapper.MapperMap(paramsMap, request)
 }
 
 func (c *ControllerBase) RequestJSON() bool {
@@ -43,16 +61,39 @@ func (c *ControllerBase) IsGZIP() bool {
 }
 
 func (c *ControllerBase) RequestBody() []byte {
-	var requestbody []byte
+	var requestBody []byte
 	safe := &io.LimitedReader{R: c.request.Body, N: 1 << 24} //16M
 	if c.IsGZIP() {
 		reader, err := gzip.NewReader(safe)
 		if err != nil {
 			return nil
 		}
-		requestbody, _ = ioutil.ReadAll(reader)
+		requestBody, _ = ioutil.ReadAll(reader)
 	} else {
-		requestbody, _ = ioutil.ReadAll(safe)
+		requestBody, _ = ioutil.ReadAll(safe)
 	}
-	return requestbody
+	return requestBody
+}
+
+func (c *ControllerBase) Cache(key string, val string, ttl time.Duration) error {
+	err := redis.Set(key, val, ttl)
+	if err != nil {
+		panic(err.Error())
+	}
+	return nil
+}
+
+func (c *ControllerBase) CacheValue(key string) string {
+	val, err := redis.Get(key)
+	if err != nil && err != redis.Nil {
+		panic(err)
+	}
+	return val
+}
+
+func (c *ControllerBase) JsonResponse(w http.ResponseWriter, res interface{}) {
+	body, _ := json.Marshal(res)
+	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+	w.WriteHeader(http.StatusOK)
+	w.Write(body)
 }
