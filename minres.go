@@ -5,6 +5,7 @@ import (
 	_ "github.com/hacdias/caddy-service"
 	_ "github.com/zhangmingfeng/minres/plugins/router"
 	_ "github.com/zhangmingfeng/minres/plugins/redis"
+	_ "github.com/zhangmingfeng/minres/plugins/seaweedfs"
 	_ "github.com/zhangmingfeng/minres/controllers"
 )
 

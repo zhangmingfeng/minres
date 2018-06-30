@@ -9,12 +9,14 @@ import (
 	"github.com/devfeel/mapper"
 	"encoding/json"
 	"github.com/zhangmingfeng/minres/plugins/router"
+	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
 )
 
 var Controller = &Upload{}
 
 func init() {
 	router.RegisterController("upload.params", Controller.Params)
+	router.RegisterController("upload.upload", Controller.Upload)
 }
 
 type Upload struct {
@@ -60,7 +62,6 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
-	response.Token = token
 	params := message.Params{}
 	tokenData := u.CacheValue(token)
 	if len(tokenData) > 0 {
@@ -70,7 +71,47 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 			panic(err.Error())
 		}
 		mapper.MapperMap(tokenMap, &params)
+	} else {
+		key, err := seaweedfs.GetKey()
+		if err != nil {
+			panic(err.Error())
+		}
+		params.Key = key
+		val, err := json.Marshal(params)
+		if err != nil {
+			panic(err.Error())
+		}
+		u.Cache(token, string(val), 0)
 	}
 	response.Params = params
+	response.Token = token
+	response.UploadUrl = router.Url("upload.upload")
 	u.JsonResponse(w, response)
+}
+
+func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
+	request := message.NewUploadRequest()
+	response := message.NewUploadResponse()
+	defer func() {
+		if err := recover(); err != nil {
+			response.Code = 500
+			response.Msg = fmt.Sprint(err)
+			u.JsonResponse(w, response)
+		}
+	}()
+	u.ParseForm(r, request)
+	token := request.Token
+	if len(token) <= 0 {
+		response.Code = message.TokenIsEmpty
+		response.Msg = "token is empty"
+		u.JsonResponse(w, response)
+		return
+	}
+	tokenData := u.CacheValue(token)
+	if len(tokenData) <= 0 {
+		response.Code = message.TokenIsInvalid
+		response.Msg = "token is invalid"
+		u.JsonResponse(w, response)
+		return
+	}
 }

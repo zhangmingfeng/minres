@@ -9,6 +9,7 @@ import (
 type Handler struct {
 	Next   httpserver.Handler
 	Router *mux.Router
+	HOST   string
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) (int, error) {

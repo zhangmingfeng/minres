@@ -6,6 +6,7 @@ import (
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/gorilla/mux"
 	"strings"
+	"fmt"
 )
 
 func init() {
@@ -21,15 +22,25 @@ func setup(c *caddy.Controller) error {
 	if err != nil {
 		return err
 	}
-
+	routerHandle = Handler{
+		Router: router,
+		HOST:   cfg.Addr.String(),
+	}
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
-		return Handler{
-			Next:   next,
-			Router: router,
-		}
+		routerHandle.Next = next
+		return routerHandle
 	})
 
 	return nil
+}
+
+func Url(name string, params ...string) string {
+	route := routerHandle.Router.Get(name)
+	if route == nil {
+		return ""
+	}
+	url, _ := route.URL(params...)
+	return fmt.Sprintf("%s%s", routerHandle.HOST, url.String())
 }
 
 func routeParse(c *caddy.Controller) (*mux.Router, error) {
@@ -42,7 +53,8 @@ func routeParse(c *caddy.Controller) (*mux.Router, error) {
 		}
 
 		path := args[0]
-		var method = ""
+		var method string
+		var name string
 		var action string
 
 		for c.NextBlock() {
@@ -57,17 +69,23 @@ func routeParse(c *caddy.Controller) (*mux.Router, error) {
 					return r, c.ArgErr()
 				}
 				method = c.Val()
+			case "name":
+				if !c.NextArg() {
+					return r, c.ArgErr()
+				}
+				name = c.Val()
 			}
 		}
-
+		if len(name) == 0 {
+			name = action
+		}
 		if handle, ok := registerController[action]; ok {
 			if len(method) > 0 {
 				methods := strings.Split(strings.Replace(method, " ", "", -1), ",")
-				r.HandleFunc(path, handle).Name(path).Methods(methods...)
+				r.HandleFunc(path, handle).Methods(methods...).Name(name)
 			} else {
-				r.HandleFunc(path, handle).Name(path)
+				r.HandleFunc(path, handle).Name(name)
 			}
-
 		}
 	}
 	return r, nil
@@ -84,4 +102,5 @@ func RegisterController(name string, handler http.HandlerFunc) {
 
 var (
 	registerController = make(map[string]http.HandlerFunc)
+	routerHandle       Handler
 )
