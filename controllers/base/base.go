@@ -1,15 +1,15 @@
 package base
 
 import (
+	"compress/gzip"
+	"encoding/json"
+	"github.com/devfeel/mapper"
+	"github.com/gorilla/mux"
+	"github.com/zhangmingfeng/minres/plugins/redis"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"regexp"
-	"io"
-	"compress/gzip"
-	"io/ioutil"
-	"encoding/json"
-	"github.com/gorilla/mux"
-	"github.com/devfeel/mapper"
-	"github.com/zhangmingfeng/minres/plugins/redis"
 	"time"
 )
 
@@ -41,7 +41,7 @@ func (c *ControllerBase) ParseForm(r *http.Request, request interface{}) {
 			paramsMap[k] = v
 		}
 	}
-	r.ParseForm()
+	r.ParseMultipartForm(32 << 20)
 	for k, _ := range r.Form {
 		paramsMap[k] = r.FormValue(k)
 	}

@@ -1,6 +1,9 @@
 package message
 
-import "github.com/zhangmingfeng/minres/controllers/base/message"
+import (
+	"github.com/zhangmingfeng/minres/controllers/base/message"
+	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+)
 
 const (
 	FileNameIsEmpty    = 10001
@@ -13,42 +16,51 @@ const (
 
 type ParamsRequest struct {
 	FileName  string `json:"fileName,omitempty"`
-	FileSize  int    `json:"fileSize,omitempty"`
-	FileTime  int    `json:"fileTime,omitempty"`
-	ChunkSize int    `json:"chunkSize,omitempty"`
+	FileGroup string `json:"fileGroup,omitempty"`
+	FileSize  int64  `json:"fileSize,omitempty"`
+	FileTime  int64  `json:"fileTime,omitempty"`
+	ChunkSize int64  `json:"chunkSize,omitempty"`
 }
 
 type ParamsResponse struct {
 	message.BaseResponse
 	Token     string `json:"token,omitempty"`
 	UploadUrl string `json:"uploadUrl,omitempty"`
-	Params    Params `json:"params,omitempty"`
-}
-
-type Params struct {
-	Loaded     int    `json:"loaded,omitempty"`
-	Key        string `json:"key,omitempty"`
-	IsFinished bool   `json:"isFinished,omitempty"`
+	Loaded    int64  `json:"loaded,omitempty"`
+	ChunkSize int64  `json:"chunkSize,omitempty"`
+	Chunk     int    `json:"chunk,omitempty"`
+	Chunks    int    `json:"chunks,omitempty"`
+	FileGroup string `json:"fileGroup,omitempty"`
 }
 
 type UploadRequest struct {
-	Token  string `json:"token,omitempty"`
-	Chunk  int    `json:"chunk,omitempty"`
-	Chunks int    `json:"chunks,omitempty"`
+	Token string `json:"token,omitempty"`
+	File  string `json:"file,omitempty"`
+	Chunk int    `json:"chunk,omitempty"`
 }
 
 type UploadResponse struct {
 	message.BaseResponse
-	IsFinished string `json:"isFinished,omitempty"`
-	Loaded     int    `json:"loaded,omitempty"`
-	Chunk      int    `json:"chunk,omitempty"`
-	Chunks     int    `json:"chunks,omitempty"`
-	File       File   `json:"file,omitempty"`
+	IsFinished bool  `json:"isFinished,omitempty"`
+	Loaded     int64 `json:"loaded,omitempty"`
+	Chunk      int   `json:"chunk,omitempty"`
+	Chunks     int   `json:"chunks,omitempty"`
+	File       File  `json:"file,omitempty"`
 }
 
 type File struct {
-	Key string `json:"key,omitempty"`
+	Fid string `json:"fid,omitempty"`
 	Url string `json:"url,omitempty"`
+}
+
+type TokenData struct {
+	Fid        string `json:"fid"`
+	Loaded     int64  `json:"loaded,omitempty"`
+	ChunkSize  int64  `json:"chunkSize,omitempty"`
+	Chunk      int    `json:"chunk,omitempty"`
+	Chunks     int    `json:"chunks,omitempty"`
+	Collection string `json:"collection,omitempty"`
+	ChunkList  seaweedfs.ChunkList
 }
 
 func NewParamsRequest() *ParamsRequest {

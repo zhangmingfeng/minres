@@ -4,23 +4,21 @@ import (
 	"github.com/zhangmingfeng/minres/plugins/router"
 	"github.com/zhangmingfeng/minres/controllers/base"
 	"net/http"
-	"github.com/zhangmingfeng/minres/plugins/redis"
+	"encoding/json"
 	"fmt"
 )
 
 var UserController = User{}
 
 type TestRequesst struct {
-	Name   string `json:"name"`
-	Age    int    `json:"age"`
-	Test   string `json:"test"`
-	TestId int    `json:"testId"`
-	Params Params `json:"params"`
+	Name   string   `json:"name"`
+	Age    int      `json:"age"`
+	Params []*Param `json:"params"`
 }
 
-type Params struct {
-	p1 string `json:"p1"`
-	p2 int    `json:"p2"`
+type Param struct {
+	P1 string `json:"p1"`
+	P2 int    `json:"p2"`
 }
 
 func init() {
@@ -32,23 +30,23 @@ type User struct {
 }
 
 func (u *User) Test(w http.ResponseWriter, r *http.Request) {
-	testRequest := &TestRequesst{
-		Test: "aaaaaa",
+	testR := &TestRequesst{
+		Name: "zhang",
+		Age:  28,
+		Params: []*Param{
+			&Param{
+				P1: "1p1",
+				P2: 1,
+			},
+			&Param{
+				P1: "2p1",
+				P2: 3,
+			}},
 	}
-	u.ParseForm(r, testRequest)
-	fmt.Println(testRequest)
-	err := redis.Client.Set("test", map[string]string{"name": "zhangmingfeng", "age": "28"}, 0).Err()
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
-	val, err := redis.Client.Get("test").Result()
-	if err != nil {
-		fmt.Println(err)
-		panic(err)
-	}
-	fmt.Println(val)
-	r.ParseForm()
-	w.WriteHeader(200)
-	w.Write([]byte("hello world, test: "))
+	fmt.Println(testR, testR.Params[0], testR.Params[1])
+	b, _ := json.Marshal(testR)
+	testR2 := &TestRequesst{}
+	err := json.Unmarshal(b, testR2)
+	fmt.Println(err)
+	fmt.Println(testR2, testR2.Params[0], testR2.Params[1])
 }
