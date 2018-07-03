@@ -117,8 +117,12 @@ func MergeChunks(filename string, chunkManifest *ChunkManifest, args url.Values)
 	return defaultClient.MergeChunks(filename, chunkManifest, args)
 }
 
-func Delete(fid string, count int) (err error) {
-	return defaultClient.Delete(fid, count)
+func Delete(fid string, collection ...string) (err error) {
+	return defaultClient.Delete(fid, collection...)
+}
+
+func Deletes(fids []string, collection ...string) (err error) {
+	return defaultClient.Deletes(fids, collection...)
 }
 
 func (c *Client) GetUrl(fid string, collection ...string) (publicUrl, url string, err error) {
@@ -181,7 +185,7 @@ func (c *Client) MergeChunks(filename string, chunkManifest *ChunkManifest, args
 	return
 }
 
-func (c *Client) Delete(fid string, count int, collection ...string) (err error) {
+func (c *Client) Delete(fid string, collection ...string) (err error) {
 	col := ""
 	if len(collection) > 0 {
 		col = collection[0]
@@ -190,7 +194,25 @@ func (c *Client) Delete(fid string, count int, collection ...string) (err error)
 	if err != nil {
 		return
 	}
-	return vol.Delete(fid, count)
+	return vol.Delete(fid)
+}
+
+func (c *Client) Deletes(fids []string, collection ...string) (err error) {
+	col := ""
+	if len(collection) > 0 {
+		col = collection[0]
+	}
+	for _, fid := range fids {
+		vol, err := c.Volume(fid, col)
+		if err != nil {
+			return err
+		}
+		err = vol.Delete(fid)
+		if err != nil {
+			return err
+		}
+	}
+	return
 }
 
 var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
@@ -271,8 +293,7 @@ func del(url string) error {
 	if err != nil {
 		return err
 	}
-	resp.Body.Close()
-
+	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK &&
 		resp.StatusCode != http.StatusAccepted {
 		txt, _ := ioutil.ReadAll(resp.Body)

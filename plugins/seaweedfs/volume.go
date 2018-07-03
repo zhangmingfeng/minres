@@ -56,20 +56,10 @@ func (v *Volume) MergeChunks(fid, filename string, chunkManifest *ChunkManifest)
 	return
 }
 
-func (v *Volume) Delete(fid string, count int) (err error) {
-	if count <= 0 {
-		count = 1
-	}
-
+func (v *Volume) Delete(fid string) (err error) {
 	url := fmt.Sprintf("%s/%s", v.PublicUrl(), fid)
 	if err = del(url); err != nil {
 		return err
-	}
-
-	for i := 1; i < count; i++ {
-		if err = del(fmt.Sprintf("%s_%d", url, i)); err != nil {
-			return
-		}
 	}
 	return
 }

@@ -10,8 +10,8 @@ import (
 	"github.com/zhangmingfeng/minres/utils"
 	"math"
 	"net/http"
-	"runtime/debug"
 	"net/url"
+	"runtime/debug"
 	"strconv"
 )
 
@@ -79,17 +79,18 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 		isNew = tokenDataBin.IsFinish
 	}
 	if isNew {
-		tokenDataBin = message.TokenData{}
-		tokenDataBin.FileSize = request.FileSize
-		tokenDataBin.FileName = request.FileName
-		tokenDataBin.FileTime = request.FileTime
-		tokenDataBin.IsFinish = false
-		tokenDataBin.Loaded = 0
-		tokenDataBin.ChunkSize = request.ChunkSize
-		tokenDataBin.Chunk = 1
 		chunks := math.Ceil(float64(request.FileSize) / float64(request.ChunkSize))
-		tokenDataBin.Chunks = int(chunks)
-		tokenDataBin.Collection = request.FileGroup
+		tokenDataBin = message.TokenData{
+			FileSize:   request.FileSize,
+			FileName:   request.FileName,
+			FileTime:   request.FileTime,
+			IsFinish:   false,
+			Loaded:     0,
+			ChunkSize:  request.ChunkSize,
+			Chunk:      1,
+			Chunks:     int(chunks),
+			Collection: request.FileGroup,
+		}
 		val, err := json.Marshal(tokenDataBin)
 		if err != nil {
 			panic(err.Error())
@@ -157,12 +158,13 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err)
 	}
-	tokenDataBin.Loaded = tokenDataBin.Loaded + size
-	chunkInfo := &seaweedfs.ChunkInfo{}
-	chunkInfo.Fid = fid
-	chunkInfo.Offset = int64(request.Chunk-1) * tokenDataBin.ChunkSize
-	chunkInfo.Size = size
+	chunkInfo := &seaweedfs.ChunkInfo{
+		Fid:    fid,
+		Offset: int64(request.Chunk-1) * tokenDataBin.ChunkSize,
+		Size:   size,
+	}
 	tokenDataBin.ChunkList = append(tokenDataBin.ChunkList, chunkInfo)
+	tokenDataBin.Loaded = tokenDataBin.Loaded + size
 	response.Loaded = tokenDataBin.Loaded
 	response.Chunk = request.Chunk
 	response.Chunks = tokenDataBin.Chunks

@@ -1,0 +1,79 @@
+package message
+
+import (
+	"github.com/zhangmingfeng/minres/controllers/base/message"
+	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+)
+
+type ImageRequest struct {
+	Fid string `json:"fid,omitempty"`
+}
+
+type ParamsResponse struct {
+	message.BaseResponse
+	Token     string `json:"token,omitempty"`
+	UploadUrl string `json:"uploadUrl,omitempty"`
+	Loaded    int64  `json:"loaded,omitempty"`
+	ChunkSize int64  `json:"chunkSize,omitempty"`
+	Chunk     int    `json:"chunk,omitempty"`
+	Chunks    int    `json:"chunks,omitempty"`
+	FileGroup string `json:"fileGroup,omitempty"`
+}
+
+type UploadRequest struct {
+	Token      string `json:"token,omitempty"`
+	FileHandle string `json:"fileHandle,omitempty"`
+	Chunk      int    `json:"chunk,omitempty"`
+}
+
+type UploadResponse struct {
+	message.BaseResponse
+	IsFinished bool  `json:"isFinished,omitempty"`
+	Loaded     int64 `json:"loaded,omitempty"`
+	Chunk      int   `json:"chunk,omitempty"`
+	Chunks     int   `json:"chunks,omitempty"`
+	File       File  `json:"file,omitempty"`
+}
+
+type File struct {
+	Fid string `json:"fid,omitempty"`
+	Url string `json:"url,omitempty"`
+}
+
+type TokenData struct {
+	FileName   string                 `json:"fileName,omitempty"`
+	FileSize   int64                  `json:"fileSize,omitempty"`
+	FileTime   int64                  `json:"fileTime,omitempty"`
+	IsFinish   bool                   `json:"isFinish,omitempty"`
+	Loaded     int64                  `json:"loaded,omitempty"`
+	ChunkSize  int64                  `json:"chunkSize,omitempty"`
+	Chunk      int                    `json:"chunk,omitempty"`
+	Chunks     int                    `json:"chunks,omitempty"`
+	Collection string                 `json:"collection,omitempty"`
+	ChunkList  []*seaweedfs.ChunkInfo `json:"chunkList"`
+}
+
+func NewParamsRequest() *ParamsRequest {
+	return &ParamsRequest{}
+}
+
+func NewUploadRequest() *UploadRequest {
+	return &UploadRequest{}
+}
+
+func NewParamsResponse() *ParamsResponse {
+	return &ParamsResponse{
+		BaseResponse: message.BaseResponse{
+			Code: 200,
+			Msg:  "success",
+		},
+	}
+}
+func NewUploadResponse() *UploadResponse {
+	return &UploadResponse{
+		BaseResponse: message.BaseResponse{
+			Code: 200,
+			Msg:  "success",
+		},
+	}
+}
