@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"net/url"
-	"bytes"
+	"strconv"
 )
 
 var Controller = &Upload{}
@@ -70,17 +70,20 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenDataBin := message.TokenData{}
 	tokenData := u.CacheValue(token)
+	isNew := true
 	if len(tokenData) > 0 {
 		err := utils.Map2Struct(tokenData, &tokenDataBin)
 		if err != nil {
 			panic(err.Error())
 		}
-	} else {
-		fid, err := seaweedfs.GetKey(request.FileGroup)
-		if err != nil {
-			panic(err.Error())
-		}
-		tokenDataBin.Fid = fid
+		isNew = tokenDataBin.IsFinish
+	}
+	if isNew {
+		tokenDataBin = message.TokenData{}
+		tokenDataBin.FileSize = request.FileSize
+		tokenDataBin.FileName = request.FileName
+		tokenDataBin.FileTime = request.FileTime
+		tokenDataBin.IsFinish = false
 		tokenDataBin.Loaded = 0
 		tokenDataBin.ChunkSize = request.ChunkSize
 		tokenDataBin.Chunk = 1
@@ -134,58 +137,59 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
-	file, fileInfo, err := r.FormFile("file")
+	if request.Chunk < tokenDataBin.Chunk {
+		response.Code = message.ChunkISInvalid
+		response.Msg = "chunk is invalid, current chunk is " + strconv.Itoa(tokenDataBin.Chunk)
+		u.JsonResponse(w, response)
+		return
+	}
+	fileHandle := request.FileHandle
+	if len(fileHandle) <= 0 {
+		fileHandle = "file"
+	}
+	file, fileInfo, err := r.FormFile(fileHandle)
 	if err != nil {
 		panic(err)
 	}
-	fid, err := seaweedfs.GetKey("category")
-	fmt.Println(fid)
-	if err != nil {
-		panic(err.Error())
-	}
-	size, err := seaweedfs.Upload(fid, tokenDataBin.Collection, fileInfo.Filename, "", 0, file, url.Values{})
+	args := url.Values{}
+	args.Set("collection", tokenDataBin.Collection)
+	fid, size, err := seaweedfs.Upload(fileInfo.Filename, file, args)
 	if err != nil {
 		panic(err)
 	}
 	tokenDataBin.Loaded = tokenDataBin.Loaded + size
 	chunkInfo := &seaweedfs.ChunkInfo{}
 	chunkInfo.Fid = fid
-	chunkInfo.Offset = 0
+	chunkInfo.Offset = int64(request.Chunk-1) * tokenDataBin.ChunkSize
 	chunkInfo.Size = size
 	tokenDataBin.ChunkList = append(tokenDataBin.ChunkList, chunkInfo)
-	val, err := json.Marshal(tokenDataBin)
-	if err != nil {
-		panic(err.Error())
-	}
-	u.Cache(token, string(val), 0)
 	response.Loaded = tokenDataBin.Loaded
 	response.Chunk = request.Chunk
 	response.Chunks = tokenDataBin.Chunks
 	response.IsFinished = false
 	if request.Chunk >= tokenDataBin.Chunks {
 		response.IsFinished = true
+		tokenDataBin.IsFinish = true
 		chunkManifest := &seaweedfs.ChunkManifest{
 			Name:   fileInfo.Filename,
 			Mime:   "application/octet-stream",
 			Size:   response.Loaded,
 			Chunks: tokenDataBin.ChunkList,
 		}
-		data, _ := json.Marshal(chunkManifest)
-		fmt.Println(string(data))
-		buffer := bytes.NewBuffer(data)
 		args := url.Values{}
-		args.Set("cm", "true")
-		fid, err := seaweedfs.GetKey("category")
+		args.Set("collection", tokenDataBin.Collection)
+		fid, _, err := seaweedfs.MergeChunks(fileInfo.Filename, chunkManifest, args)
 		if err != nil {
-			panic(err.Error())
+			panic(err)
 		}
 		response.File = message.File{
 			Fid: fid,
 		}
-		_, err = seaweedfs.Upload(fid, tokenDataBin.Collection, fileInfo.Filename, "application/json", 0, buffer, args)
-		if err != nil {
-			panic(err)
-		}
 	}
+	val, err := json.Marshal(tokenDataBin)
+	if err != nil {
+		panic(err.Error())
+	}
+	u.Cache(token, string(val), 0)
 	u.JsonResponse(w, response)
 }

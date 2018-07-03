@@ -12,6 +12,7 @@ const (
 	ChunkSizeIsInvalid = 10004
 	TokenIsEmpty       = 10005
 	TokenIsInvalid     = 10006
+	ChunkISInvalid     = 10007
 )
 
 type ParamsRequest struct {
@@ -34,9 +35,9 @@ type ParamsResponse struct {
 }
 
 type UploadRequest struct {
-	Token string `json:"token,omitempty"`
-	File  string `json:"file,omitempty"`
-	Chunk int    `json:"chunk,omitempty"`
+	Token      string `json:"token,omitempty"`
+	FileHandle string `json:"fileHandle,omitempty"`
+	Chunk      int    `json:"chunk,omitempty"`
 }
 
 type UploadResponse struct {
@@ -54,13 +55,16 @@ type File struct {
 }
 
 type TokenData struct {
-	Fid        string `json:"fid"`
-	Loaded     int64  `json:"loaded,omitempty"`
-	ChunkSize  int64  `json:"chunkSize,omitempty"`
-	Chunk      int    `json:"chunk,omitempty"`
-	Chunks     int    `json:"chunks,omitempty"`
-	Collection string `json:"collection,omitempty"`
-	ChunkList  seaweedfs.ChunkList
+	FileName   string                 `json:"fileName,omitempty"`
+	FileSize   int64                  `json:"fileSize,omitempty"`
+	FileTime   int64                  `json:"fileTime,omitempty"`
+	IsFinish   bool                   `json:"isFinish,omitempty"`
+	Loaded     int64                  `json:"loaded,omitempty"`
+	ChunkSize  int64                  `json:"chunkSize,omitempty"`
+	Chunk      int                    `json:"chunk,omitempty"`
+	Chunks     int                    `json:"chunks,omitempty"`
+	Collection string                 `json:"collection,omitempty"`
+	ChunkList  []*seaweedfs.ChunkInfo `json:"chunkList"`
 }
 
 func NewParamsRequest() *ParamsRequest {

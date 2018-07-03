@@ -3,7 +3,6 @@ package seaweedfs
 import (
 	"github.com/mholt/caddy"
 	"errors"
-	"github.com/ginuerzh/weedo"
 )
 
 func init() {
@@ -18,7 +17,7 @@ func setup(c *caddy.Controller) error {
 	if err != nil {
 		return err
 	}
-	Client = weedo.NewClient(weedfsCfg.Master, weedfsCfg.Filers...)
+	defaultClient = NewClient(weedfsCfg.Master, weedfsCfg.Filers...)
 	return nil
 }
 
