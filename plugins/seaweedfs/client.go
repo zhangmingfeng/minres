@@ -156,8 +156,8 @@ func ReadFile(fileName string) (data []byte, err error) {
 	return defaultClient.ReadFile(fileName)
 }
 
-func Fetch(fid string) (*FileInfo, error) {
-	return defaultClient.Fetch(fid)
+func Fetch(fid string, args url.Values) (*FileInfo, error) {
+	return defaultClient.Fetch(fid, args)
 }
 
 func (c *Client) GetUrl(fid string, collection ...string) (publicUrl, url string, err error) {
@@ -212,10 +212,13 @@ func (c *Client) ReadFile(fileName string) (data []byte, err error) {
 	return
 }
 
-func (c *Client) Fetch(fid string) (fileInfo *FileInfo, err error) {
+func (c *Client) Fetch(fid string, args url.Values) (fileInfo *FileInfo, err error) {
 	_, fileUrl, err := c.GetUrl(fid)
 	if err != nil {
 		return fileInfo, err
+	}
+	if len(args.Encode()) > 0 {
+		fileUrl = fmt.Sprintf("%s?%s", fileUrl, args.Encode())
 	}
 	req, err := http.NewRequest("GET", fileUrl, nil)
 	if err != nil {

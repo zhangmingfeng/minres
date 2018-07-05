@@ -12,6 +12,9 @@ import (
 	"encoding/json"
 	"time"
 	"errors"
+	"net/url"
+	"strconv"
+	"runtime/debug"
 )
 
 var Controller = &Fetch{}
@@ -29,6 +32,8 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 	f.ParseForm(r, &request)
 	defer func() {
 		if err := recover(); err != nil {
+			fmt.Println(err)
+			debug.Stack()
 			f.TextResponse(w, http.StatusNotFound, "not found")
 		}
 	}()
@@ -51,9 +56,14 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 	}
 	prefix := strings.Join(prefixList, "_")
 	fileMeta := f.CacheValue(fmt.Sprintf("%s_%s_meta", fid, prefix))
+	args := url.Values{}
+	args.Set("width", strconv.Itoa(width))
+	args.Set("height", strconv.Itoa(height))
+	args.Set("mode", mode)
 	var fileInfo *seaweedfs.FileInfo
+	var err error
 	if len(fileMeta) <= 0 {
-		fileInfo, err := seaweedfs.Fetch(fid)
+		fileInfo, err = seaweedfs.Fetch(fid, args)
 		if err != nil {
 			panic(err)
 		}
@@ -74,7 +84,7 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		}
 		data, err := seaweedfs.ReadFile(fmt.Sprintf("%s_%s", fid, prefix))
 		if err != nil { //如果读文件失败，就重新获取
-			fileInfo, err := seaweedfs.Fetch(fid)
+			fileInfo, err := seaweedfs.Fetch(fid, args)
 			if err != nil {
 				panic(err)
 			}
@@ -85,7 +95,7 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		}
 		fileInfo.SetData(data)
 	}
-	err := f.FileResponse(w, r, fileInfo, request.Download)
+	err = f.FileResponse(w, r, fileInfo, request.Download)
 	if err != nil {
 		panic(err)
 	}
