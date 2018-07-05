@@ -3,6 +3,7 @@ package seaweedfs
 import (
 	"github.com/mholt/caddy"
 	"errors"
+	"net/http"
 )
 
 func init() {
@@ -17,7 +18,11 @@ func setup(c *caddy.Controller) error {
 	if err != nil {
 		return err
 	}
-	defaultClient = NewClient(weedfsCfg.Master, weedfsCfg.Filers...)
+	defaultClient = NewClient(weedfsCfg.Master, weedfsCfg.SavePath, weedfsCfg.Filers...)
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 1024,
+	}
+	httpCliet = &http.Client{Transport: transport}
 	return nil
 }
 
@@ -39,6 +44,11 @@ func weedfsConfigParse(c *caddy.Controller) (*WeedfsConfig, error) {
 					return weedfsCfg, c.ArgErr()
 				}
 				weedfsCfg.Filers = append(weedfsCfg.Filers, c.Val())
+			case "path":
+				if !c.NextArg() {
+					return weedfsCfg, c.ArgErr()
+				}
+				weedfsCfg.SavePath = c.Val()
 			}
 		}
 	}
@@ -46,6 +56,7 @@ func weedfsConfigParse(c *caddy.Controller) (*WeedfsConfig, error) {
 }
 
 type WeedfsConfig struct {
-	Master string
-	Filers []string
+	Master   string
+	Filers   []string
+	SavePath string
 }

@@ -1,5 +1,7 @@
 package seaweedfs
 
+//refer to https://github.com/chrislusf/seaweedfs
+
 import (
 	"errors"
 	"net/http"

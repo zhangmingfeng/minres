@@ -26,6 +26,9 @@ type Upload struct {
 	base.ControllerBase
 }
 
+/**
+获取上传参数
+ */
 func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	request := message.NewParamsRequest()
 	response := message.NewParamsResponse()
@@ -172,17 +175,20 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	if request.Chunk >= tokenDataBin.Chunks {
 		response.IsFinished = true
 		tokenDataBin.IsFinish = true
-		chunkManifest := &seaweedfs.ChunkManifest{
-			Name:   fileInfo.Filename,
-			Mime:   "application/octet-stream",
-			Size:   response.Loaded,
-			Chunks: tokenDataBin.ChunkList,
-		}
-		args := url.Values{}
-		args.Set("collection", tokenDataBin.Collection)
-		fid, _, err := seaweedfs.MergeChunks(fileInfo.Filename, chunkManifest, args)
-		if err != nil {
-			panic(err)
+		//当总分片大于1的时候，才使用chunk功能
+		if tokenDataBin.Chunks > 1 {
+			chunkManifest := &seaweedfs.ChunkManifest{
+				Name:   fileInfo.Filename,
+				Mime:   "application/octet-stream",
+				Size:   response.Loaded,
+				Chunks: tokenDataBin.ChunkList,
+			}
+			args := url.Values{}
+			args.Set("collection", tokenDataBin.Collection)
+			fid, _, err = seaweedfs.MergeChunks(fileInfo.Filename, chunkManifest, args)
+			if err != nil {
+				panic(err)
+			}
 		}
 		response.File = message.File{
 			Fid: fid,

@@ -13,9 +13,14 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"regexp"
+	"os"
+	"path"
 )
 
 var defaultClient *Client
+
+var httpCliet *http.Client
 
 type ChunkInfo struct {
 	Fid    string `json:"fid,omitempty"`
@@ -29,26 +34,44 @@ type ChunkManifest struct {
 	Size   int64        `json:"size,omitempty"`
 	Chunks []*ChunkInfo `json:"chunks,omitempty"`
 }
+
+type FileInfo struct {
+	Name string `json:"name,omitempty"`
+	Size int64  `json:"size,omitempty"`
+	Mime string `json:"mime,omitempty"`
+	data []byte `json:"data,omitempty"`
+}
+
+func (f *FileInfo) SetData(data []byte) {
+	f.data = data
+}
+
+func (f *FileInfo) GetData() []byte {
+	return f.data
+}
+
 type Fid struct {
 	Id, Key, Cookie uint64
 }
 
 type Client struct {
-	master  *Master
-	volumes map[uint64]*Volume
-	filers  map[string]*Filer
+	master   *Master
+	volumes  map[uint64]*Volume
+	filers   map[string]*Filer
+	savePath string
 }
 
-func NewClient(masterAddr string, filerUrls ...string) *Client {
+func NewClient(masterAddr, savePath string, filerUrls ...string) *Client {
 	filers := make(map[string]*Filer)
 	for _, url := range filerUrls {
 		filer := NewFiler(url)
 		filers[filer.Url] = filer
 	}
 	return &Client{
-		master:  NewMaster(masterAddr),
-		volumes: make(map[uint64]*Volume),
-		filers:  filers,
+		master:   NewMaster(masterAddr),
+		volumes:  make(map[uint64]*Volume),
+		filers:   filers,
+		savePath: savePath,
 	}
 }
 
@@ -125,6 +148,18 @@ func Deletes(fids []string, collection ...string) (err error) {
 	return defaultClient.Deletes(fids, collection...)
 }
 
+func SaveFile(fileName string, data []byte) error {
+	return defaultClient.SaveFile(fileName, data)
+}
+
+func ReadFile(fileName string) (data []byte, err error) {
+	return defaultClient.ReadFile(fileName)
+}
+
+func Fetch(fid string) (*FileInfo, error) {
+	return defaultClient.Fetch(fid)
+}
+
 func (c *Client) GetUrl(fid string, collection ...string) (publicUrl, url string, err error) {
 	col := ""
 	if len(collection) > 0 {
@@ -154,6 +189,61 @@ func (c *Client) GetUrls(fid string, collection ...string) (locations []Location
 		loc.Url = fmt.Sprintf("%s/%s", loc.Url, fid)
 		locations = append(locations, loc)
 	}
+	return
+}
+
+func (c *Client) SaveFile(fileName string, data []byte) error {
+	file, err := os.OpenFile(path.Join(c.savePath, fileName), os.O_RDWR|os.O_CREATE, 0755)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.Write(data)
+	return err
+}
+
+func (c *Client) ReadFile(fileName string) (data []byte, err error) {
+	file, err := os.Open(path.Join(c.savePath, fileName))
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	data, err = ioutil.ReadAll(file)
+	return
+}
+
+func (c *Client) Fetch(fid string) (fileInfo *FileInfo, err error) {
+	_, fileUrl, err := c.GetUrl(fid)
+	if err != nil {
+		return fileInfo, err
+	}
+	req, err := http.NewRequest("GET", fileUrl, nil)
+	if err != nil {
+		return fileInfo, err
+	}
+
+	resp, err := httpCliet.Do(req)
+	if err != nil {
+		return fileInfo, err
+	}
+	defer resp.Body.Close()
+	switch resp.StatusCode {
+	case http.StatusOK:
+		break
+	case http.StatusPartialContent:
+		break
+	case http.StatusNotFound:
+		return fileInfo, errors.New("404")
+	default:
+		return fileInfo, errors.New("unknown error")
+
+	}
+	fileInfo = parseFileInfoFromHeader(resp.Header)
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return
+	}
+	fileInfo.SetData(data)
 	return
 }
 
@@ -219,6 +309,19 @@ var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 func escapeQuotes(s string) string {
 	return quoteEscaper.Replace(s)
+}
+
+func parseFileInfoFromHeader(header http.Header) *FileInfo {
+	fileInfo := &FileInfo{}
+	reg := regexp.MustCompile(`filename=\"(.*)\"`)
+	fileName := reg.FindStringSubmatch(header.Get("Content-Disposition"))
+	if len(fileName) == 2 {
+		fileInfo.Name = fileName[1]
+	}
+	fileSize := header.Get("Content-Length")
+	fileInfo.Size, _ = strconv.ParseInt(fileSize, 10, 0)
+	fileInfo.Mime = header.Get("Content-Type")
+	return fileInfo
 }
 
 func createFormFile(writer *multipart.Writer, fieldname, filename, mime string) (io.Writer, error) {

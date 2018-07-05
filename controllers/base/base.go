@@ -1,15 +1,21 @@
 package base
 
 import (
+	"bytes"
 	"compress/gzip"
 	"encoding/json"
 	"github.com/devfeel/mapper"
 	"github.com/gorilla/mux"
 	"github.com/zhangmingfeng/minres/plugins/redis"
+	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
 	"io"
 	"io/ioutil"
+	"mime"
 	"net/http"
+	"path"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -96,4 +102,33 @@ func (c *ControllerBase) JsonResponse(w http.ResponseWriter, res interface{}) {
 	w.Header().Set("Content-Type", "application/json; charset=UTF-8")
 	w.WriteHeader(http.StatusOK)
 	w.Write(body)
+}
+
+func (c *ControllerBase) TextResponse(w http.ResponseWriter, status int, text string) {
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(status)
+	w.Write([]byte(text))
+}
+
+func (c *ControllerBase) FileResponse(w http.ResponseWriter, r *http.Request, fileInfo *seaweedfs.FileInfo, isDownload bool) error {
+	if fileInfo.Mime == "" {
+		if ext := path.Ext(fileInfo.Name); ext != "" {
+			fileInfo.Mime = mime.TypeByExtension(ext)
+		}
+	}
+	w.Header().Set("Content-Type", fileInfo.Mime)
+	contentDisposition := "inline"
+	if !strings.HasPrefix(fileInfo.Mime, "image") {
+		contentDisposition = "attachment"
+	}
+	if isDownload {
+		contentDisposition = "attachment"
+	}
+	w.Header().Set("Content-Disposition", contentDisposition+`; filename="`+fileInfo.Name+`"`)
+	w.Header().Set("Content-Length", strconv.FormatInt(fileInfo.Size, 10))
+	if r.Method == "HEAD" {
+		return nil
+	}
+	_, err := io.Copy(w, bytes.NewReader(fileInfo.GetData()))
+	return err
 }
