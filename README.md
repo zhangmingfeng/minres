@@ -1,4 +1,9 @@
 # minres
-Smart resource management, with caddy+seaweedfs, Using Grapicmagick to handle compression and clipping of pictures
+Smart resource management, with caddy+seaweedfs
 
-curl -i -X POST -H "Content-type: application/json" -d '{"name":"zhangmingfeng", "age":28, "params":{"p1":"p111111", "p2":22222}}' http://localhost:61621/test/123
+# 安装
+go get github.com/zhangmingfeng/minres
+
+# 前置条件
+* redis (用来存储上传文件的信息, 实现断点续传以及文件的本地缓存)
+* seaweedfs (小文件存储系统)
