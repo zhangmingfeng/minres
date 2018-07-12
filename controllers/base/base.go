@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/devfeel/mapper"
+	"github.com/zhangmingfeng/mapper"
 	"github.com/gorilla/mux"
 	"github.com/zhangmingfeng/minres/plugins/redis"
 	"github.com/zhangmingfeng/minres/plugins/seaweedfs"

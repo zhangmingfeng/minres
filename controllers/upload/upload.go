@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strconv"
+	"github.com/zhangmingfeng/mapper"
 )
 
 var Controller = &Upload{}
@@ -75,7 +76,7 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	tokenData := u.CacheValue(token)
 	isNew := true
 	if len(tokenData) > 0 {
-		err := utils.Map2Struct(tokenData, &tokenDataBin)
+		err := mapper.Map2Struct(tokenData, &tokenDataBin)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -137,7 +138,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tokenDataBin := message.TokenData{}
-	err := utils.Map2Struct(tokenData, &tokenDataBin)
+	err := mapper.Map2Struct(tokenData, &tokenDataBin)
 	if err != nil {
 		panic(err.Error())
 	}

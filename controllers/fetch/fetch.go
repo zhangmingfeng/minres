@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
-	"github.com/zhangmingfeng/minres/utils"
+	"github.com/zhangmingfeng/mapper"
 	"encoding/json"
 	"time"
 	"errors"
@@ -78,7 +78,7 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		f.Cache(fmt.Sprintf("%s_%s_meta", fid, prefix), string(val), 3600*24*time.Second)
 	} else {
 		fileInfo = &seaweedfs.FileInfo{}
-		err := utils.Json2Struct(fileMeta, fileInfo)
+		err := mapper.Json2Struct(fileMeta, fileInfo)
 		if err != nil {
 			panic(err)
 		}
