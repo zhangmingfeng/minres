@@ -1,20 +1,20 @@
 package fetch
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"github.com/zhangmingfeng/minres/controllers/base"
 	"github.com/zhangmingfeng/minres/controllers/fetch/message"
 	"github.com/zhangmingfeng/minres/plugins/router"
-	"net/http"
-	"fmt"
-	"strings"
 	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
-	"github.com/zhangmingfeng/mapper"
-	"encoding/json"
-	"time"
-	"errors"
+	"github.com/zhangmingfeng/minres/utils"
+	"net/http"
 	"net/url"
-	"strconv"
 	"runtime/debug"
+	"strconv"
+	"strings"
+	"time"
 )
 
 var Controller = &Fetch{}
@@ -78,7 +78,7 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		f.Cache(fmt.Sprintf("%s_%s_meta", fid, prefix), string(val), 3600*24*time.Second)
 	} else {
 		fileInfo = &seaweedfs.FileInfo{}
-		err := mapper.Json2Struct(fileMeta, fileInfo)
+		err := utils.Json2Struct(fileMeta, fileInfo)
 		if err != nil {
 			panic(err)
 		}
