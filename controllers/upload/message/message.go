@@ -2,7 +2,7 @@ package message
 
 import (
 	"github.com/zhangmingfeng/minres/controllers/base/message"
-	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 )
 
 const (
@@ -55,16 +55,16 @@ type File struct {
 }
 
 type TokenData struct {
-	FileName   string                 `json:"fileName,omitempty"`
-	FileSize   int64                  `json:"fileSize,omitempty"`
-	FileTime   int64                  `json:"fileTime,omitempty"`
-	IsFinish   bool                   `json:"isFinish,omitempty"`
-	Loaded     int64                  `json:"loaded,omitempty"`
-	ChunkSize  int64                  `json:"chunkSize,omitempty"`
-	Chunk      int                    `json:"chunk,omitempty"`
-	Chunks     int                    `json:"chunks,omitempty"`
-	Collection string                 `json:"collection,omitempty"`
-	ChunkList  []*seaweedfs.ChunkInfo `json:"chunkList"`
+	FileName   string            `json:"fileName,omitempty"`
+	FileSize   int64             `json:"fileSize,omitempty"`
+	FileTime   int64             `json:"fileTime,omitempty"`
+	IsFinish   bool              `json:"isFinish,omitempty"`
+	Loaded     int64             `json:"loaded,omitempty"`
+	ChunkSize  int64             `json:"chunkSize,omitempty"`
+	Chunk      int               `json:"chunk,omitempty"`
+	Chunks     int               `json:"chunks,omitempty"`
+	Collection string            `json:"collection,omitempty"`
+	ChunkList  []*weed.ChunkInfo `json:"chunkList"`
 }
 
 func NewParamsRequest() *ParamsRequest {

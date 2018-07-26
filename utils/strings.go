@@ -1,9 +1,9 @@
 package utils
 
 import (
-	"encoding/json"
 	"crypto/md5"
 	"encoding/hex"
+	"encoding/json"
 )
 
 func Md5(data interface{}) (string, error) {

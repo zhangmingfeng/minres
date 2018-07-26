@@ -4,10 +4,10 @@ import (
 	"bytes"
 	"compress/gzip"
 	"encoding/json"
-	"github.com/zhangmingfeng/mapper"
 	"github.com/gorilla/mux"
+	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 	"github.com/zhangmingfeng/minres/plugins/redis"
-	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+	"github.com/zhangmingfeng/minres/utils"
 	"io"
 	"io/ioutil"
 	"mime"
@@ -51,7 +51,7 @@ func (c *ControllerBase) ParseForm(r *http.Request, request interface{}) {
 	for k, _ := range r.Form {
 		paramsMap[k] = r.FormValue(k)
 	}
-	mapper.MapperMap(paramsMap, request)
+	utils.Map2Struct(paramsMap, request)
 }
 
 func (c *ControllerBase) RequestJSON() bool {
@@ -110,7 +110,7 @@ func (c *ControllerBase) TextResponse(w http.ResponseWriter, status int, text st
 	w.Write([]byte(text))
 }
 
-func (c *ControllerBase) FileResponse(w http.ResponseWriter, r *http.Request, fileInfo *seaweedfs.FileInfo, isDownload bool) error {
+func (c *ControllerBase) FileResponse(w http.ResponseWriter, r *http.Request, fileInfo *weed.FileInfo, isDownload bool) error {
 	if fileInfo.Mime == "" {
 		if ext := path.Ext(fileInfo.Name); ext != "" {
 			fileInfo.Mime = mime.TypeByExtension(ext)

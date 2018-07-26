@@ -6,21 +6,20 @@ import (
 	"fmt"
 	"github.com/zhangmingfeng/minres/controllers/base"
 	"github.com/zhangmingfeng/minres/controllers/fetch/message"
-	"github.com/zhangmingfeng/minres/plugins/router"
-	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+	"github.com/zhangmingfeng/minres/plugins/minres"
+	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 	"github.com/zhangmingfeng/minres/utils"
 	"net/http"
 	"net/url"
 	"runtime/debug"
 	"strconv"
 	"strings"
-	"time"
 )
 
 var Controller = &Fetch{}
 
 func init() {
-	router.RegisterController("fetch.fetch", Controller.Fetch)
+	minres.RegisterController("/fetch/{fid}", Controller.Fetch)
 }
 
 type Fetch struct {
@@ -55,40 +54,46 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		prefixList = append(prefixList, fmt.Sprintf("m%s", mode))
 	}
 	prefix := strings.Join(prefixList, "_")
-	fileMeta := f.CacheValue(fmt.Sprintf("%s_%s_meta", fid, prefix))
+	var fileMeta string
+	if len(prefix) > 0 {
+		fileMeta = f.CacheValue(fmt.Sprintf("%s_%s_meta", fid, prefix))
+	}
 	args := url.Values{}
 	args.Set("width", strconv.Itoa(width))
 	args.Set("height", strconv.Itoa(height))
 	args.Set("mode", mode)
-	var fileInfo *seaweedfs.FileInfo
+	var fileInfo *weed.FileInfo
 	var err error
 	if len(fileMeta) <= 0 {
-		fileInfo, err = seaweedfs.Fetch(fid, args)
+		fileInfo, err = minres.WeedClient.Fetch(fid, args)
 		if err != nil {
 			panic(err)
 		}
-		err = seaweedfs.SaveFile(fmt.Sprintf("%s_%s", fid, prefix), fileInfo.GetData())
-		if err != nil {
-			panic(err)
+		// 仅仅缩略图才缓存文件
+		if !strings.HasPrefix(fileInfo.Mime, "image") && len(prefix) > 0 {
+			err = minres.WeedClient.SaveFile(fmt.Sprintf("%s_%s", fid, prefix), fileInfo.GetData())
+			if err != nil {
+				panic(err)
+			}
+			val, err := json.Marshal(fileInfo)
+			if err != nil {
+				panic(err)
+			}
+			f.Cache(fmt.Sprintf("%s_%s_meta", fid, prefix), string(val), 0)
 		}
-		val, err := json.Marshal(fileInfo)
-		if err != nil {
-			panic(err)
-		}
-		f.Cache(fmt.Sprintf("%s_%s_meta", fid, prefix), string(val), 3600*24*time.Second)
 	} else {
-		fileInfo = &seaweedfs.FileInfo{}
+		fileInfo = &weed.FileInfo{}
 		err := utils.Json2Struct(fileMeta, fileInfo)
 		if err != nil {
 			panic(err)
 		}
-		data, err := seaweedfs.ReadFile(fmt.Sprintf("%s_%s", fid, prefix))
+		data, err := minres.WeedClient.ReadFile(fmt.Sprintf("%s_%s", fid, prefix))
 		if err != nil { //如果读文件失败，就重新获取
-			fileInfo, err := seaweedfs.Fetch(fid, args)
+			fileInfo, err := minres.WeedClient.Fetch(fid, args)
 			if err != nil {
 				panic(err)
 			}
-			err = seaweedfs.SaveFile(fmt.Sprintf("%s_%s", fid, prefix), fileInfo.GetData())
+			err = minres.WeedClient.SaveFile(fmt.Sprintf("%s_%s", fid, prefix), fileInfo.GetData())
 			if err != nil {
 				panic(err)
 			}

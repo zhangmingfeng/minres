@@ -1,31 +1,45 @@
-package router
+package minres
 
 import (
-	"github.com/mholt/caddy"
-	"net/http"
-	"github.com/mholt/caddy/caddyhttp/httpserver"
-	"github.com/gorilla/mux"
-	"strings"
 	"fmt"
+	"github.com/gorilla/mux"
+	"github.com/mholt/caddy"
+	"github.com/mholt/caddy/caddyhttp/httpserver"
+	"github.com/zhangmingfeng/minres/plugins/minres/weed"
+	"net/http"
 )
 
 func init() {
-	caddy.RegisterPlugin("route", caddy.Plugin{
+	httpserver.RegisterDevDirective("minres", "")
+	caddy.RegisterPlugin("minres", caddy.Plugin{
 		ServerType: "http",
 		Action:     setup,
 	})
 }
 
+var host string
+var WeedClient *weed.Client
+
+type Config struct {
+	WdMaster  string
+	WdFilers  []string
+	CachePath string
+}
+
 func setup(c *caddy.Controller) error {
 	cfg := httpserver.GetConfig(c)
-	router, err := routeParse(c)
+	router, minresCfg, err := parse(c)
 	if err != nil {
 		return err
 	}
+	for k, v := range registerController {
+		router.HandleFunc(k, v).Name(k)
+	}
 	routerHandle = Handler{
 		Router: router,
-		HOST:   cfg.Addr.String(),
 	}
+	host = cfg.Addr.String()
+	WeedClient = weed.NewClient(minresCfg.WdMaster, minresCfg.CachePath, minresCfg.WdFilers...)
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
 		routerHandle.Next = next
 		return routerHandle
@@ -40,55 +54,34 @@ func Url(name string, params ...string) string {
 		return ""
 	}
 	url, _ := route.URL(params...)
-	return fmt.Sprintf("%s%s", routerHandle.HOST, url.String())
+	return fmt.Sprintf("%s%s", host, url.String())
 }
 
-func routeParse(c *caddy.Controller) (*mux.Router, error) {
+func parse(c *caddy.Controller) (*mux.Router, *Config, error) {
 	r := mux.NewRouter()
+	cfg := &Config{WdFilers: []string{}}
 	for c.Next() {
-		args := c.RemainingArgs()
-
-		if len(args) != 1 {
-			return r, c.ArgErr()
-		}
-
-		path := args[0]
-		var method string
-		var name string
-		var action string
-
 		for c.NextBlock() {
 			switch c.Val() {
-			case "action":
+			case "wd_master":
 				if !c.NextArg() {
-					return r, c.ArgErr()
+					return r, cfg, c.ArgErr()
 				}
-				action = c.Val()
-			case "method":
+				cfg.WdMaster = c.Val()
+			case "wd_filer":
 				if !c.NextArg() {
-					return r, c.ArgErr()
+					return r, cfg, c.ArgErr()
 				}
-				method = c.Val()
-			case "name":
+				cfg.WdFilers = append(cfg.WdFilers, c.Val())
+			case "cache_path":
 				if !c.NextArg() {
-					return r, c.ArgErr()
+					return r, cfg, c.ArgErr()
 				}
-				name = c.Val()
-			}
-		}
-		if len(name) == 0 {
-			name = action
-		}
-		if handle, ok := registerController[action]; ok {
-			if len(method) > 0 {
-				methods := strings.Split(strings.Replace(method, " ", "", -1), ",")
-				r.HandleFunc(path, handle).Methods(methods...).Name(name)
-			} else {
-				r.HandleFunc(path, handle).Name(name)
+				cfg.CachePath = c.Val()
 			}
 		}
 	}
-	return r, nil
+	return r, cfg, nil
 }
 
 func RegisterController(name string, handler http.HandlerFunc) {

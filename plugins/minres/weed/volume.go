@@ -1,6 +1,7 @@
-package seaweedfs
+package weed
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -9,7 +10,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"bytes"
 )
 
 type Volume struct {

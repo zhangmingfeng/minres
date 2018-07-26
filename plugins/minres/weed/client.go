@@ -1,4 +1,4 @@
-package seaweedfs
+package weed
 
 import (
 	"bytes"
@@ -11,14 +11,12 @@ import (
 	"net/http"
 	"net/textproto"
 	"net/url"
-	"strconv"
-	"strings"
-	"regexp"
 	"os"
 	"path"
+	"regexp"
+	"strconv"
+	"strings"
 )
-
-var defaultClient *Client
 
 var httpCliet *http.Client
 
@@ -67,6 +65,10 @@ func NewClient(masterAddr, savePath string, filerUrls ...string) *Client {
 		filer := NewFiler(url)
 		filers[filer.Url] = filer
 	}
+	transport := &http.Transport{
+		MaxIdleConnsPerHost: 1024,
+	}
+	httpCliet = &http.Client{Transport: transport}
 	return &Client{
 		master:   NewMaster(masterAddr),
 		volumes:  make(map[uint64]*Volume),
@@ -130,34 +132,6 @@ func ParseFid(s string) (fid Fid, err error) {
 	}
 
 	return
-}
-
-func Upload(filename string, file io.Reader, args url.Values) (fid string, size int64, err error) {
-	return defaultClient.Upload(filename, file, args)
-}
-
-func MergeChunks(filename string, chunkManifest *ChunkManifest, args url.Values) (fid string, size int64, err error) {
-	return defaultClient.MergeChunks(filename, chunkManifest, args)
-}
-
-func Delete(fid string, collection ...string) (err error) {
-	return defaultClient.Delete(fid, collection...)
-}
-
-func Deletes(fids []string, collection ...string) (err error) {
-	return defaultClient.Deletes(fids, collection...)
-}
-
-func SaveFile(fileName string, data []byte) error {
-	return defaultClient.SaveFile(fileName, data)
-}
-
-func ReadFile(fileName string) (data []byte, err error) {
-	return defaultClient.ReadFile(fileName)
-}
-
-func Fetch(fid string, args url.Values) (*FileInfo, error) {
-	return defaultClient.Fetch(fid, args)
 }
 
 func (c *Client) GetUrl(fid string, collection ...string) (publicUrl, url string, err error) {

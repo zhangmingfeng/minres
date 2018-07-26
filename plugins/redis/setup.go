@@ -1,13 +1,15 @@
 package redis
 
 import (
-	"github.com/mholt/caddy"
-	"github.com/go-redis/redis"
-	"strconv"
 	"errors"
+	"github.com/go-redis/redis"
+	"github.com/mholt/caddy"
+	"github.com/mholt/caddy/caddyhttp/httpserver"
+	"strconv"
 )
 
 func init() {
+	httpserver.RegisterDevDirective("redis", "")
 	caddy.RegisterPlugin("redis", caddy.Plugin{
 		ServerType: "http",
 		Action:     setup,

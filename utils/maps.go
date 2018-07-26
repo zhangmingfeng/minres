@@ -2,8 +2,8 @@ package utils
 
 import (
 	"encoding/json"
-	"github.com/devfeel/mapper"
 	"errors"
+	"github.com/devfeel/mapper"
 )
 
 func Map2Struct(fromMap interface{}, toStruct interface{}) error {

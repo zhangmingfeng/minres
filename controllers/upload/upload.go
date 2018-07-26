@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"github.com/zhangmingfeng/minres/controllers/base"
 	"github.com/zhangmingfeng/minres/controllers/upload/message"
-	"github.com/zhangmingfeng/minres/plugins/router"
-	"github.com/zhangmingfeng/minres/plugins/seaweedfs"
+	"github.com/zhangmingfeng/minres/plugins/minres"
+	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 	"github.com/zhangmingfeng/minres/utils"
 	"math"
 	"net/http"
@@ -18,8 +18,8 @@ import (
 var Controller = &Upload{}
 
 func init() {
-	router.RegisterController("upload.params", Controller.Params)
-	router.RegisterController("upload.upload", Controller.Upload)
+	minres.RegisterController("/params", Controller.Params)
+	minres.RegisterController("/upload", Controller.Upload)
 }
 
 type Upload struct {
@@ -101,7 +101,7 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 		u.Cache(token, string(val), 0)
 	}
 	response.Token = token
-	response.UploadUrl = router.Url("upload.upload")
+	response.UploadUrl = minres.Url("/upload")
 	response.ChunkSize = tokenDataBin.ChunkSize
 	response.Chunk = tokenDataBin.Chunk
 	response.Chunks = tokenDataBin.Chunks
@@ -141,7 +141,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		panic(err.Error())
 	}
-	if request.Chunk < tokenDataBin.Chunk {
+	if request.Chunk != tokenDataBin.Chunk {
 		response.Code = message.ChunkISInvalid
 		response.Msg = "chunk is invalid, current chunk is " + strconv.Itoa(tokenDataBin.Chunk)
 		u.JsonResponse(w, response)
@@ -157,11 +157,11 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	args := url.Values{}
 	args.Set("collection", tokenDataBin.Collection)
-	fid, size, err := seaweedfs.Upload(fileInfo.Filename, file, args)
+	fid, size, err := minres.WeedClient.Upload(fileInfo.Filename, file, args)
 	if err != nil {
 		panic(err)
 	}
-	chunkInfo := &seaweedfs.ChunkInfo{
+	chunkInfo := &weed.ChunkInfo{
 		Fid:    fid,
 		Offset: int64(request.Chunk-1) * tokenDataBin.ChunkSize,
 		Size:   size,
@@ -177,7 +177,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 		tokenDataBin.IsFinish = true
 		//当总分片大于1的时候，才使用chunk功能
 		if tokenDataBin.Chunks > 1 {
-			chunkManifest := &seaweedfs.ChunkManifest{
+			chunkManifest := &weed.ChunkManifest{
 				Name:   fileInfo.Filename,
 				Mime:   "application/octet-stream",
 				Size:   response.Loaded,
@@ -185,14 +185,17 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 			}
 			args := url.Values{}
 			args.Set("collection", tokenDataBin.Collection)
-			fid, _, err = seaweedfs.MergeChunks(fileInfo.Filename, chunkManifest, args)
+			fid, _, err = minres.WeedClient.MergeChunks(fileInfo.Filename, chunkManifest, args)
 			if err != nil {
 				panic(err)
 			}
 		}
 		response.File = message.File{
 			Fid: fid,
+			Url: minres.Url("/fetch/{fid}", "fid", fid),
 		}
+	} else {
+		tokenDataBin.Chunk = request.Chunk + 1
 	}
 	val, err := json.Marshal(tokenDataBin)
 	if err != nil {

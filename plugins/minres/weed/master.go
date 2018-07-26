@@ -1,6 +1,4 @@
-package seaweedfs
-
-//refer to https://github.com/chrislusf/seaweedfs
+package weed
 
 import (
 	"errors"

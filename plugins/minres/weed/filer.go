@@ -1,5 +1,5 @@
 // filer
-package seaweedfs
+package weed
 
 import (
 	"bytes"
@@ -14,7 +14,7 @@ type File struct {
 }
 
 type Dir struct {
-	Path    string  `json:"Directory"`
+	Path    string `json:"Directory"`
 	Files   []*File
 	Subdirs []*File `json:"Subdirectories"`
 }
