@@ -29,7 +29,7 @@ go build -o minres minres.go
           methods           GET,POST,OPTIONS
           allowed_headers   X-Requested-With,X-User-Token
       }
-      minres { #只配置
+      minres { #主配置
           wd_master 127.0.0.1:9333 # weed的master地址
           cache_path /home/zhangmingfeng/Desktop # 缓存文件的位置
       }
@@ -86,7 +86,7 @@ go build -o minres minres.go
   - w int 仅仅在资源是图片的时候有用，定制返回的图片的宽度
   - h int 仅仅在资源是图片的时候有用，定制返回的图片的高度
   - m string 仅仅在资源是图片的时候有用，设置缩略图的属性，目前支持：fit, fill，具体可参见https://github.com/chrislusf/seaweedfs
-  - dl bool 是否是下载，如果是下载，及时是浏览器可以直接打开的文件，也会当做附件下载
+  - dl bool 是否是下载，如果是下载，即使是浏览器可以直接打开的文件，也会当做附件下载
   
 # 启动服务
 在linux系统下，可以安装开机自启动，参见：https://caddyserver.com/docs/hook.service
