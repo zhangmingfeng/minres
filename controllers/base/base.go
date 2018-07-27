@@ -20,8 +20,8 @@ import (
 )
 
 var (
-	requestJSONRegex = regexp.MustCompile(`(application/json)(?:,|$)`)
-	acceptsJSONRegex = regexp.MustCompile(`(application/json)(?:,|$)`)
+	requestJSONRegex = regexp.MustCompile(`^(application/json)`)
+	acceptsJSONRegex = regexp.MustCompile(`^(application/json)`)
 	isGZIPRegex      = regexp.MustCompile("gzip")
 )
 
