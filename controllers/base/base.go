@@ -5,6 +5,8 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/zhangmingfeng/minres/plugins/minres"
+	"github.com/zhangmingfeng/minres/plugins/minres/log"
 	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 	"github.com/zhangmingfeng/minres/plugins/redis"
 	"github.com/zhangmingfeng/minres/utils"
@@ -131,4 +133,8 @@ func (c *ControllerBase) FileResponse(w http.ResponseWriter, r *http.Request, fi
 	}
 	_, err := io.Copy(w, bytes.NewReader(fileInfo.GetData()))
 	return err
+}
+
+func (c *ControllerBase) Logger() *log.Logger {
+	return minres.Logger
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/mholt/caddy/caddyhttp/httpserver"
 	"github.com/zhangmingfeng/minres/plugins/minres/weed"
 	"net/http"
+	"github.com/zhangmingfeng/minres/plugins/minres/log"
 )
 
 func init() {
@@ -19,11 +20,14 @@ func init() {
 
 var host string
 var WeedClient *weed.Client
+var Logger *log.Logger
 
 type Config struct {
 	WdMaster  string
 	WdFilers  []string
 	CachePath string
+	LogPath   string
+	LogLevel  string
 }
 
 func setup(c *caddy.Controller) error {
@@ -40,6 +44,10 @@ func setup(c *caddy.Controller) error {
 	}
 	host = cfg.Addr.String()
 	WeedClient = weed.NewClient(minresCfg.WdMaster, minresCfg.CachePath, minresCfg.WdFilers...)
+	Logger, err = log.NewLogger(minresCfg.LogPath, minresCfg.LogLevel)
+	if err != nil {
+		return err
+	}
 	cfg.AddMiddleware(func(next httpserver.Handler) httpserver.Handler {
 		routerHandle.Next = next
 		return routerHandle
@@ -78,6 +86,16 @@ func parse(c *caddy.Controller) (*mux.Router, *Config, error) {
 					return r, cfg, c.ArgErr()
 				}
 				cfg.CachePath = c.Val()
+			case "log_path":
+				if !c.NextArg() {
+					return r, cfg, c.ArgErr()
+				}
+				cfg.LogPath = c.Val()
+			case "log_level":
+				if !c.NextArg() {
+					return r, cfg, c.ArgErr()
+				}
+				cfg.LogLevel = c.Val()
 			}
 		}
 	}
