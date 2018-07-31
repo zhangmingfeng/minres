@@ -29,9 +29,21 @@ go build -o minres minres.go
           methods           GET,POST,OPTIONS
           allowed_headers   X-Requested-With,X-User-Token
       }
+      log /var/log/minres/web-access.log {
+          rotate_size 50  # Rotate after 50 MB
+          rotate_keep 10  # Keep at most 10 log files
+          rotate_compress # Compress rotated log files in gzip format
+      }
+      errors /var/log/minres/web-error.log {
+          rotate_size 50  # Rotate after 50 MB
+          rotate_keep 10  # Keep at most 10 log files
+          rotate_compress # Compress rotated log files in gzip format
+      }
       minres { #主配置
           wd_master 127.0.0.1:9333 # weed的master地址
-          cache_path /home/zhangmingfeng/Desktop # 缓存文件的位置
+          cache_path /data # 缓存文件的位置
+          log_path /var/log/minres/minres.log
+          log_level DEBUG
       }
       redis { # redis配置
           addr 127.0.0.1:6379
