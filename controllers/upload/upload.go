@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"runtime/debug"
 	"strconv"
+	"mime"
 )
 
 var Controller = &Upload{}
@@ -20,6 +21,7 @@ var Controller = &Upload{}
 func init() {
 	minres.RegisterController("/params", Controller.Params)
 	minres.RegisterController("/upload", Controller.Upload)
+	minres.RegisterController("/remote", Controller.Remote)
 }
 
 type Upload struct {
@@ -34,6 +36,7 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	response := message.NewParamsResponse()
 	defer func() {
 		if err := recover(); err != nil {
+			u.Logger().Error(err)
 			response.Code = 500
 			response.Msg = fmt.Sprint(err)
 			u.JsonResponse(w, response)
@@ -41,6 +44,7 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	}()
 	u.ParseForm(r, request)
 	if len(request.FileName) <= 0 {
+		u.Logger().Error("fileName is empty")
 		response.Code = message.FileNameIsEmpty
 		response.Msg = "fileName is empty"
 		u.JsonResponse(w, response)
@@ -50,18 +54,21 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 		request.FileGroup = "default"
 	}
 	if request.FileSize <= 0 {
+		u.Logger().Error("fileSize is invalid")
 		response.Code = message.FileSizeIsInvalid
 		response.Msg = "fileSize is invalid"
 		u.JsonResponse(w, response)
 		return
 	}
 	if request.FileTime <= 0 {
+		u.Logger().Error("fileTime is invalid")
 		response.Code = message.FileTimeIsInvalid
 		response.Msg = "fileTime is invalid"
 		u.JsonResponse(w, response)
 		return
 	}
 	if request.ChunkSize <= 0 {
+		u.Logger().Error("chunkSize is invalid")
 		response.Code = message.ChunkSizeIsInvalid
 		response.Msg = "chunkSize is invalid"
 		u.JsonResponse(w, response)
@@ -69,6 +76,7 @@ func (u *Upload) Params(w http.ResponseWriter, r *http.Request) {
 	}
 	token, err := utils.Md5(request)
 	if err != nil {
+		u.Logger().Error(err.Error())
 		panic(err.Error())
 	}
 	tokenDataBin := message.TokenData{}
@@ -116,6 +124,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		if err := recover(); err != nil {
 			fmt.Println(string(debug.Stack()))
+			u.Logger().Error(err)
 			response.Code = 500
 			response.Msg = fmt.Sprint(err)
 			u.JsonResponse(w, response)
@@ -124,6 +133,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	u.ParseForm(r, request)
 	token := request.Token
 	if len(token) <= 0 {
+		u.Logger().Error("token is empty")
 		response.Code = message.TokenIsEmpty
 		response.Msg = "token is empty"
 		u.JsonResponse(w, response)
@@ -131,6 +141,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	tokenData := u.CacheValue(token)
 	if len(tokenData) <= 0 {
+		u.Logger().Error("token is invalid")
 		response.Code = message.TokenIsInvalid
 		response.Msg = "token is invalid"
 		u.JsonResponse(w, response)
@@ -142,8 +153,9 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 		panic(err.Error())
 	}
 	if request.Chunk != tokenDataBin.Chunk {
-		response.Code = message.ChunkISInvalid
+		response.Code = message.ChunkIsInvalid
 		response.Msg = "chunk is invalid, current chunk is " + strconv.Itoa(tokenDataBin.Chunk)
+		u.Logger().Error(response.Msg)
 		u.JsonResponse(w, response)
 		return
 	}
@@ -191,8 +203,10 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		response.File = message.File{
-			Fid: fid,
-			Url: minres.Url("/fetch/{fid}", "fid", fid),
+			Fid:  fid,
+			Name: fileInfo.Filename,
+			Size: response.Loaded,
+			Url:  minres.Url("/fetch/{fid}", "fid", fid),
 		}
 	} else {
 		tokenDataBin.Chunk = request.Chunk + 1
@@ -203,4 +217,82 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 	u.Cache(token, string(val), 0)
 	u.JsonResponse(w, response)
+}
+
+func (u *Upload) Remote(w http.ResponseWriter, r *http.Request) {
+	request := message.NewRemoteRequest()
+	response := message.NewRemoteResponse()
+	defer func() {
+		if err := recover(); err != nil {
+			fmt.Println(string(debug.Stack()))
+			u.Logger().Error(err)
+			response.Code = 500
+			response.Msg = fmt.Sprint(err)
+			u.JsonResponse(w, response)
+		}
+	}()
+	u.ParseForm(r, request)
+	remoteUrl := request.Url
+	if len(remoteUrl) <= 0 {
+		u.Logger().Error("url is empty")
+		response.Code = message.RemoteUrlIsEmpty
+		response.Msg = "url is empty"
+		u.JsonResponse(w, response)
+		return
+	}
+	if len(request.FileGroup) <= 0 {
+		request.FileGroup = "default"
+	}
+	if len(request.FileName) <= 0 {
+		request.FileName, _ = utils.Md5(request)
+	}
+	resp, err := http.Get(remoteUrl)
+	if err != nil {
+		u.Logger().Error(err.Error())
+		response.Code = message.RemoteUrlIsInvalid
+		response.Msg = "url is invalid"
+		u.JsonResponse(w, response)
+		return
+	}
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		u.Logger().Error("url is invalid, httpCode: ", resp.StatusCode)
+		response.Code = message.RemoteUrlIsInvalid
+		response.Msg = "url is invalid"
+		u.JsonResponse(w, response)
+		return
+	}
+	fileExt := getExtByHttpHeader(resp.Header)
+	if len(fileExt) == 0 {
+		u.Logger().Error("remote file content-type is invalid, content-type: ", resp.Header.Get("Content-Type"))
+		response.Code = message.RemoteUrlIsInvalid
+		response.Msg = "url is invalid"
+		u.JsonResponse(w, response)
+		return
+	}
+	args := url.Values{}
+	args.Set("collection", request.FileGroup)
+	request.FileName = fmt.Sprintf("%s%s", request.FileName, fileExt)
+	fid, size, err := minres.WeedClient.Upload(request.FileName, resp.Body, args)
+	if err != nil {
+		panic(err)
+	}
+	response.File = message.File{
+		Fid:  fid,
+		Name: request.FileName,
+		Size: size,
+		Url:  minres.Url("/fetch/{fid}", "fid", fid),
+	}
+	u.JsonResponse(w, response)
+}
+
+func getExtByHttpHeader(header http.Header) string {
+	contentType := header.Get("Content-Type")
+	exts, err := mime.ExtensionsByType(contentType)
+	if err != nil {
+		return ""
+	}
+	if len(exts) == 0 {
+		return ""
+	}
+	return exts[0]
 }

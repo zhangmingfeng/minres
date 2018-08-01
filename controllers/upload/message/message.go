@@ -12,7 +12,9 @@ const (
 	ChunkSizeIsInvalid = 10004
 	TokenIsEmpty       = 10005
 	TokenIsInvalid     = 10006
-	ChunkISInvalid     = 10007
+	ChunkIsInvalid     = 10007
+	RemoteUrlIsEmpty   = 10008
+	RemoteUrlIsInvalid = 10009
 )
 
 type ParamsRequest struct {
@@ -49,9 +51,22 @@ type UploadResponse struct {
 	File       File  `json:"file,omitempty"`
 }
 
+type RemoteRequest struct {
+	Url       string `json:"url,omitempty"`
+	FileName  string `json:"fileName,omitempty"`
+	FileGroup string `json:"fileGroup,omitempty"`
+}
+
+type RemoteResponse struct {
+	message.BaseResponse
+	File File `json:"file,omitempty"`
+}
+
 type File struct {
-	Fid string `json:"fid,omitempty"`
-	Url string `json:"url,omitempty"`
+	Fid  string `json:"fid,omitempty"`
+	Name string `json:"name,omitempty"`
+	Size int64  `json:"size,omitempty"`
+	Url  string `json:"url,omitempty"`
 }
 
 type TokenData struct {
@@ -75,6 +90,10 @@ func NewUploadRequest() *UploadRequest {
 	return &UploadRequest{}
 }
 
+func NewRemoteRequest() *RemoteRequest {
+	return &RemoteRequest{}
+}
+
 func NewParamsResponse() *ParamsResponse {
 	return &ParamsResponse{
 		BaseResponse: message.BaseResponse{
@@ -83,8 +102,18 @@ func NewParamsResponse() *ParamsResponse {
 		},
 	}
 }
+
 func NewUploadResponse() *UploadResponse {
 	return &UploadResponse{
+		BaseResponse: message.BaseResponse{
+			Code: 200,
+			Msg:  "success",
+		},
+	}
+}
+
+func NewRemoteResponse() *RemoteResponse {
+	return &RemoteResponse{
 		BaseResponse: message.BaseResponse{
 			Code: 200,
 			Msg:  "success",
