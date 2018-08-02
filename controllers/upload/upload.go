@@ -148,7 +148,7 @@ func (u *Upload) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tokenDataBin := message.TokenData{}
-	err := utils.Map2Struct(tokenData, &tokenDataBin)
+	err := utils.Json2Struct(tokenData, &tokenDataBin)
 	if err != nil {
 		panic(err.Error())
 	}
