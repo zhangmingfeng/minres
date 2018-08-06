@@ -90,6 +90,8 @@ go build -o minres minres.go
   - file object 文件上传完成之后的信息
     - fid string 文件ID,唯一标识，后面请求文件都需要
     - url string 文件access url
+    - name string 文件名
+    - size int 文件大小，单位字节
     
 ## 资源aeecss接口
 * url: /fetch/{fid}
@@ -99,12 +101,30 @@ go build -o minres minres.go
   - h int 仅仅在资源是图片的时候有用，定制返回的图片的高度
   - m string 仅仅在资源是图片的时候有用，设置缩略图的属性，目前支持：fit, fill，具体可参见https://github.com/chrislusf/seaweedfs
   - dl bool 是否是下载，如果是下载，即使是浏览器可以直接打开的文件，也会当做附件下载
+
+## 远程文件入库，如：将微信头像入库
+* url: /remote
+* 上送参数:
+  - url string 远程文件URL
+  - fileName string 保存的文件名, 默认值随机串
+  - fileGroup string 文件分类组, 默认值'default'
+
+* 返回参数
+  - code int 返回码，200表示成功
+  - msg string 返回信息
+  - file object 文件上传完成之后的信息
+    - fid string 文件ID,唯一标识，后面请求文件都需要
+    - url string 文件access url
+    - name string 文件名
+    - size int 文件大小，单位字节
   
 # 启动服务
 在linux系统下，可以安装开机自启动，参见：https://caddyserver.com/docs/hook.service
 以ubuntu为例：
+```
 sudo ./minres -conf /path/to/caddyfile -service install -name minres
 service minres start
+```
 
 直接启动服务
 ./minres -conf /path/to/caddyfile
