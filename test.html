@@ -2,13 +2,74 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>test upload</title>
 </head>
+<script>
+    var uploadUrl = '';
+    var token = '';
+    var chunk = 0;
+    var file = null;
+
+    function upload() {
+        var files = document.getElementById('file').files;
+        if (files.length <= 0) {
+            alert('please choose file');
+            return;
+        }
+        file = files[0];
+        requestParams({
+            fileName: file.name,
+            fileSize: file.size,
+            fileTime: Math.floor(file.lastModified / 1000),
+            chunkSize: 1024 * 1024
+        });
+    }
+
+    function requestParams(data) {
+        var xhr = new XMLHttpRequest();
+        xhr.open("post", "https://minres.funswe.com/params", true);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        var formdata = new FormData();
+        formdata.append('fileName', data.fileName);
+        formdata.append('fileSize', data.fileSize);
+        formdata.append('fileTime', data.fileTime);
+        formdata.append('chunkSize', data.chunkSize);
+        xhr.addEventListener("load", function (e) {
+            var result = JSON.parse(xhr.responseText);
+            uploadUrl = result.uploadUrl;
+            token = result.token;
+            chunk = result.chunk;
+            requestUpload();
+        });
+        xhr.addEventListener("error", function (e) {
+            console.log("error:", e);
+        });
+        xhr.send(formdata);
+    }
+
+    function requestUpload() {
+        var xhr = new XMLHttpRequest();
+        xhr.open("post", uploadUrl, true);
+        xhr.setRequestHeader("X-Requested-With", "XMLHttpRequest");
+        var formdata = new FormData();
+        formdata.append("token", token);
+        formdata.append("fileHandle", 'file');
+        formdata.append("chunk", chunk);
+        formdata.append('file', file);
+        xhr.addEventListener("load", function (e) {
+            var result = JSON.parse(xhr.responseText);
+            console.log(result);
+        });
+        xhr.addEventListener("error", function (e) {
+            console.log("error:", e);
+        });
+        xhr.send(formdata);
+    }
+</script>
 <body>
-<form action="http://localhost:61621/test/123?a=123&b=3333" method="POST">
-    <input type="text" name="name" value="zhangmingfeng">
-    <input type="text" name="age" value="28">
-    <input type="submit" value="提交">
+<form>
+    <input type="file" id="file" name="file">
+    <input type="button" onclick="upload()" value="Upload">
 </form>
 </body>
 </html>

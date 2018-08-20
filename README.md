@@ -60,7 +60,7 @@ go build -o minres minres.go
   - fileGroup string 文件分类组，默认default
   - fileSize int 文件大小，单位字节
   - fileTime int 文件最后修改时间戳
-  - chunkSize int 文件上传分片大小，默认1024 * 1024,即1M
+  - chunkSize int 文件上传分片大小，单位字节，如1024 * 1024,即1M
  
 * 返回参数:
   - code int 返回码，200表示成功
