@@ -100,6 +100,13 @@ func (f *Fetch) Fetch(w http.ResponseWriter, r *http.Request) {
 		}
 		fileInfo.SetData(data)
 	}
+	f.Logger().Info(fileInfo.LastModify, fileInfo.Etag)
+	w.Header().Set("Last-Modified", fileInfo.LastModify)
+	w.Header().Set("Etag", fileInfo.Etag)
+	if inm := r.Header.Get("If-None-Match"); inm == fileInfo.Etag {
+		w.WriteHeader(http.StatusNotModified)
+		return
+	}
 	err = f.FileResponse(w, r, fileInfo, request.Download)
 	if err != nil {
 		panic(err)

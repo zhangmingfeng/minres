@@ -34,10 +34,12 @@ type ChunkManifest struct {
 }
 
 type FileInfo struct {
-	Name string `json:"name,omitempty"`
-	Size int64  `json:"size,omitempty"`
-	Mime string `json:"mime,omitempty"`
-	data []byte `json:"data,omitempty"`
+	Name       string `json:"name,omitempty"`
+	Size       int64  `json:"size,omitempty"`
+	Mime       string `json:"mime,omitempty"`
+	LastModify string `json:lastModify,omitempty`
+	Etag       string `json:etag,omitempty`
+	data       []byte `json:"data,omitempty"`
 }
 
 func (f *FileInfo) SetData(data []byte) {
@@ -298,6 +300,8 @@ func parseFileInfoFromHeader(header http.Header) *FileInfo {
 	fileSize := header.Get("Content-Length")
 	fileInfo.Size, _ = strconv.ParseInt(fileSize, 10, 0)
 	fileInfo.Mime = header.Get("Content-Type")
+	fileInfo.LastModify = header.Get("Last-Modified")
+	fileInfo.Etag = header.Get("Etag")
 	return fileInfo
 }
 
